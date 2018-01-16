@@ -1,0 +1,20 @@
+[Unit]
+Description=hound
+Wants=network-online.target
+After=network-online.target
+Documentation=https://github.com/etsy/hound
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sysconfig/hound
+Environment=GOTRACEBACK=crash
+ExecStart=/usr/local/bin/houndd -addr ${HOUND_HOST}:${HOUND_PORT} -conf ${HOUND_CONFIG}
+LimitNOFILE=65536
+LimitCORE=infinity
+WorkingDirectory=/var/lib/hound/
+SyslogIdentifier=hound
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

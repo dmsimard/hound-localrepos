@@ -1,0 +1,64 @@
+---
+#   Copyright Red Hat, Inc. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may
+#   not use this file except in compliance with the License. You may obtain
+#   a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+- name: Set up required directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  with_items:
+    - /etc/hound
+    - /var/log/hound
+    - "{{ hound_index_files }}"
+    - "{{ localrepos_directory }}"
+
+- name: Retrieve and install Hound
+  command: /usr/local/go/bin/go get {{ hound_location }}
+  args:
+    creates: /usr/local/bin/houndd
+
+# TODO: Support other distros
+- name: Set up default service configuration
+  template:
+    src: hound.config.j2
+    dest: /etc/sysconfig/hound
+
+- name: Set up localrepos configuration
+  template:
+    src: localrepos.yml.j2
+    dest: /etc/hound/localrepos.yml
+    mode: 0600
+    owner: root
+    group: root
+
+- name: Set up hound systemd unit file
+  copy:
+    src: hound.service
+    dest: /etc/systemd/system/hound.service
+  register: hound_systemd
+
+- name: Reload systemd
+  command: systemctl daemon-reload
+  when: hound_systemd | changed
+
+- name: Set up localrepos
+  include_tasks: localrepos.yml
+
+- name: Ensure hound is started
+  service:
+    name: hound
+    state: started
+    enabled: yes

@@ -1,0 +1,98 @@
+---
+#   Copyright Red Hat, Inc. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may
+#   not use this file except in compliance with the License. You may obtain
+#   a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+###########################
+# Go configuration
+###########################
+# Whether to install Go
+go_install: true
+
+# Location where to retrieve the Go tarball from
+go_tarball_location: https://dl.google.com/go/go1.9.2.linux-amd64.tar.gz
+
+# Checksum of the tarball
+go_tarball_checksum: "sha256:de874549d9a8d8d8062be05808509c09a88a248e77ec14eb77453530829ac02b"
+
+# Path where go binaries will be installed
+go_path: /usr/local
+
+###########################
+# Hound configuration
+###########################
+# Where to retrieve Hound from
+# This specific location is set-up to include a non-merged pull-request
+hound_location: github.com/dmsimard/hound/cmds/houndd
+
+# Host to listen on
+hound_host: 0.0.0.0
+
+# Port to listen on
+hound_port: 6080
+
+# Path to configuration file
+hound_config: /etc/hound/config.json
+
+# Maximum amount of hound concurrent indexers
+hound_indexers: 4
+
+# Path to hound index files
+hound_index_files: /var/lib/hound/data
+
+###########################
+# Local repository synchronization
+###########################
+# Path to local git repositories
+localrepos_directory: /var/lib/hound/localrepos
+
+# Cron formatted schedule to run the synchronization
+# Defaults to '0 * * * *' which runs hourly at "00" minutes.
+localrepos_schedule:
+  minute: '0'
+  hour: '*'
+  day: '*'
+  weekday: '*'
+  month: '*'
+
+# List of GitHub organizations you'd like to index
+localrepos_organizations:
+  - rdo-infra
+
+# Blacklist of repositories that should not be synchronized.
+# This is a regular expression.
+localrepos_blacklist: "^puppet.*"
+
+# Location where to write the localrepos configuration file
+# Warning: contains your GitHub credentials
+localrepos_config: /etc/hound/localrepos.yml
+
+# Location where the logs will be stored
+localrepos_logs: /var/log/hound/localrepos.log
+
+###########################
+# GitHub Authentication
+###########################
+# These parameters are required in order to dynamically retrieve all the
+# repositories from a GitHub organization through the GitHub API.
+# Your GitHub username
+github_username:
+
+# Your GitHub personal token
+# You can generate a new token here: https://github.com/settings/tokens
+github_token:
+
+# The GitHub API endpoint
+# (Keep the default unless you're using GitHub enterprise)
+github_api: https://api.github.com/orgs/

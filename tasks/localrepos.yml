@@ -1,0 +1,71 @@
+---
+#   Copyright Red Hat, Inc. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may
+#   not use this file except in compliance with the License. You may obtain
+#   a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+# /usr/local/bin is not in PATH for some distros (i.e, CentOS/RHEL)
+- name: Set up /usr/local/bin to be in PATH
+  copy:
+    content: |
+      export PATH=$PATH:/usr/local/bin
+    dest: /etc/profile.d/usr_local_bin.sh
+  when: "'/usr/local/bin' not in ansible_env['PATH']"
+
+# TODO: Set up logrotate for localrepos
+- name: Install the localrepos script
+  copy:
+    src: localrepos.py
+    dest: /usr/local/bin/localrepos
+    mode: 0755
+  register: localrepos_install
+
+- name: Ensure pip is installed
+  include_tasks: pip.yml
+
+# TODO: Package this better
+- name: Create source directory for localrepos
+  file:
+    path: /usr/local/src/localrepos
+    state: directory
+
+- name: Copy requirements.txt for localrepos
+  copy:
+    src: requirements.txt
+    dest: /usr/local/src/localrepos
+
+- name: Copy localrepos requirements
+  copy:
+    src: requirements.txt
+    dest: /usr/local/src/localrepos/requirements.txt
+
+- name: Install localrepos requirements
+  pip:
+    requirements: /usr/local/src/localrepos/requirements.txt
+    state: present
+
+# If the cron hasn't been set up yet, we need to do a first synchronization
+- name: Run localrepos a first time
+  shell: /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee -a {{ localrepos_logs }}
+  when: localrepos_install | changed
+
+- name: Install the localrepos cron
+  cron:
+    name: localrepos synchronization
+    minute: "{{ localrepos_schedule['minute'] | default(omit) }}"
+    hour: "{{ localrepos_schedule['hour'] | default(omit) }}"
+    day: "{{ localrepos_schedule['day'] | default(omit) }}"
+    weekday: "{{ localrepos_schedule['weekday'] | default(omit) }}"
+    month: "{{ localrepos_schedule['month'] | default(omit) }}"
+    user: root
+    job: "flock -n /var/run/localrepos.lock /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee -a {{ localrepos_logs }} && systemctl restart hound"
