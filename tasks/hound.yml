@@ -14,51 +14,45 @@
 #   under the License.
 #
 
-- name: Set up required directories
+- name: Install golang
+  package:
+    name: golang
+    state: present
+
+- name: Set up hound directories
   file:
     path: "{{ item }}"
     state: directory
-    recurse: yes
-  with_items:
+    mode: 0750
+    owner: root
+    group: root
+  loop:
     - /etc/hound
-    - /var/log/hound
     - "{{ hound_index_files }}"
     - "{{ localrepos_directory }}"
 
 - name: Retrieve and install Hound
-  command: /usr/local/go/bin/go get {{ hound_location }}
+  environment:
+    GOPATH: "{{ hound_go_path }}"
+  command: go get {{ hound_location }}
   args:
-    creates: /usr/local/bin/houndd
-
-# TODO: Support other distros
-- name: Set up default service configuration
-  template:
-    src: hound.config.j2
-    dest: /etc/sysconfig/hound
-
-- name: Set up localrepos configuration
-  template:
-    src: localrepos.yml.j2
-    dest: /etc/hound/localrepos.yml
-    mode: 0600
-    owner: root
-    group: root
+    creates: "{{ hound_go_path }}/bin/houndd"
 
 - name: Set up hound systemd unit file
-  copy:
-    src: hound.service
+  template:
+    src: hound.service.j2
     dest: /etc/systemd/system/hound.service
-  register: hound_systemd
+    mode: 0644
+    owner: root
+    group: root
+  register: _hound_systemd
 
 - name: Reload systemd
   command: systemctl daemon-reload
-  when: hound_systemd | changed
-
-- name: Set up localrepos
-  include_tasks: localrepos.yml
+  when: _hound_systemd is changed
 
 - name: Ensure hound is started
   service:
     name: hound
     state: started
-    enabled: yes
+    enabled: true

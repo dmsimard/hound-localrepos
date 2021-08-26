@@ -21,12 +21,19 @@
       - github_username is not none
       - github_token is defined
       - github_token is not none
-      - github_api is defined
-      - github_api is not none
-
-- name: Include Go setup
-  include_tasks: go.yml
-  when: go_install
+      - github_repo_api is defined
+      - github_repo_api is not none
+      - github_org_api is defined
+      - github_org_api is not none
+    fail_msg: >-
+      Ensure that the variables github_username and github_token are set.
+      They can be provided as extra variables to the playbook.
 
 - name: Include Hound setup
   include_tasks: hound.yml
+
+- name: Set up localrepos
+  include_tasks: localrepos.yml
+
+- name: Set up nginx
+  include_tasks: nginx.yml

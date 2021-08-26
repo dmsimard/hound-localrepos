@@ -15,29 +15,16 @@
 #
 
 ###########################
-# Go configuration
-###########################
-# Whether to install Go
-go_install: true
-
-# Location where to retrieve the Go tarball from
-go_tarball_location: https://dl.google.com/go/go1.9.2.linux-amd64.tar.gz
-
-# Checksum of the tarball
-go_tarball_checksum: "sha256:de874549d9a8d8d8062be05808509c09a88a248e77ec14eb77453530829ac02b"
-
-# Path where go binaries will be installed
-go_path: /usr/local
-
-###########################
 # Hound configuration
 ###########################
-# Where to retrieve Hound from
-# This specific location is set-up to include a non-merged pull-request
-hound_location: github.com/dmsimard/hound/cmds/houndd
+# Path where go binaries from "go get" will be installed
+hound_go_path: /usr/local
 
-# Host to listen on
-hound_host: 0.0.0.0
+# Where to retrieve Hound from
+hound_location: github.com/hound-search/hound/cmds/houndd
+
+# Host to listen on (proxied to by nginx)
+hound_host: 127.0.0.1
 
 # Port to listen on
 hound_port: 6080
@@ -52,8 +39,32 @@ hound_indexers: 4
 hound_index_files: /var/lib/hound/data
 
 ###########################
+# nginx configuration
+###########################
+
+# fqdn served from nginx
+nginx_fqdn: codesearch.example.org
+
+# Directory where a custom pre-pended index.html will be prepared
+nginx_www_dir: "/var/www/{{ nginx_fqdn }}"
+
+# An explanatory header prepended to the page
+nginx_www_header: >
+  Search code across indexed repositories with <a href="https://github.com/hound-search/hound">Hound</a>.
+
+# Whether to enable https or not
+nginx_ssl: false
+
+# Path to the ssl certificate
+nginx_ssl_cert: /etc/letsencrypt/live/{{ nginx_fqdn }}/fullchain.pem
+
+# Path to the ssl key
+nginx_ssl_key: /etc/letsencrypt/live/{{ nginx_fqdn }}/privkey.pem
+
+###########################
 # Local repository synchronization
 ###########################
+
 # Path to local git repositories
 localrepos_directory: /var/lib/hound/localrepos
 
@@ -67,19 +78,21 @@ localrepos_schedule:
   month: '*'
 
 # List of GitHub organizations you'd like to index
-localrepos_organizations:
-  - rdo-infra
+# Ex: ['ansible', 'openstack']
+localrepos_organizations: []
 
-# Blacklist of repositories that should not be synchronized.
-# This is a regular expression.
-localrepos_blacklist: "^puppet.*"
+# Additional list of cherry-picked repositories
+# Ex: ['https://github.com/namespace/repository']
+localrepos_extra_repositories: []
 
-# Location where to write the localrepos configuration file
-# Warning: contains your GitHub credentials
+# Ignored repository name patterns that should not be synchronized.
+# This is expected to be a regular expression, for example: "^.*puppet.*$"
+localrepos_ignore: ""
+
+# Location where to write the localrepos configuration file.
+# WARNING: This file contains your provided GitHub credentials.
+#          It is root:root and 0600.
 localrepos_config: /etc/hound/localrepos.yml
-
-# Location where the logs will be stored
-localrepos_logs: /var/log/hound/localrepos.log
 
 ###########################
 # GitHub Authentication
@@ -89,10 +102,11 @@ localrepos_logs: /var/log/hound/localrepos.log
 # Your GitHub username
 github_username:
 
-# Your GitHub personal token
+# Your GitHub token
 # You can generate a new token here: https://github.com/settings/tokens
 github_token:
 
-# The GitHub API endpoint
+# The GitHub API endpoints
 # (Keep the default unless you're using GitHub enterprise)
-github_api: https://api.github.com/orgs/
+github_repo_api: https://api.github.com/repos
+github_org_api: https://api.github.com/orgs

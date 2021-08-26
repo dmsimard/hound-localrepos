@@ -14,6 +14,15 @@
 #   under the License.
 #
 
+- name: Install dependencies
+  package:
+    name:
+      - cronie
+      - python3-GitPython
+      - python3-requests
+      - python3-pyyaml
+    state: present
+
 # /usr/local/bin is not in PATH for some distros (i.e, CentOS/RHEL)
 - name: Set up /usr/local/bin to be in PATH
   copy:
@@ -22,50 +31,39 @@
     dest: /etc/profile.d/usr_local_bin.sh
   when: "'/usr/local/bin' not in ansible_env['PATH']"
 
-# TODO: Set up logrotate for localrepos
 - name: Install the localrepos script
   copy:
     src: localrepos.py
     dest: /usr/local/bin/localrepos
     mode: 0755
-  register: localrepos_install
+  register: _localrepos_install
 
-- name: Ensure pip is installed
-  include_tasks: pip.yml
-
-# TODO: Package this better
-- name: Create source directory for localrepos
-  file:
-    path: /usr/local/src/localrepos
-    state: directory
-
-- name: Copy requirements.txt for localrepos
-  copy:
-    src: requirements.txt
-    dest: /usr/local/src/localrepos
-
-- name: Copy localrepos requirements
-  copy:
-    src: requirements.txt
-    dest: /usr/local/src/localrepos/requirements.txt
-
-- name: Install localrepos requirements
-  pip:
-    requirements: /usr/local/src/localrepos/requirements.txt
-    state: present
+- name: Set up localrepos configuration
+  template:
+    src: localrepos.yml.j2
+    dest: /etc/hound/localrepos.yml
+    mode: 0600
+    owner: root
+    group: root
 
 # If the cron hasn't been set up yet, we need to do a first synchronization
 - name: Run localrepos a first time
-  shell: /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee -a {{ localrepos_logs }}
-  when: localrepos_install | changed
+  shell: /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee | systemd-cat -t 'localrepos-update' -p info
+  when: _localrepos_install is changed
 
 - name: Install the localrepos cron
   cron:
-    name: localrepos synchronization
+    name: localrepos-update
     minute: "{{ localrepos_schedule['minute'] | default(omit) }}"
     hour: "{{ localrepos_schedule['hour'] | default(omit) }}"
     day: "{{ localrepos_schedule['day'] | default(omit) }}"
     weekday: "{{ localrepos_schedule['weekday'] | default(omit) }}"
     month: "{{ localrepos_schedule['month'] | default(omit) }}"
     user: root
-    job: "flock -n /var/run/localrepos.lock /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee -a {{ localrepos_logs }} && systemctl restart hound"
+    job: "flock -n /var/run/localrepos.lock /usr/local/bin/localrepos --config /etc/hound/localrepos.yml | tee | systemd-cat -t 'localrepos-update' -p info && systemctl restart hound"
+
+- name: Ensure crond is started and enabled
+  service:
+    name: crond
+    state: started
+    enabled: true

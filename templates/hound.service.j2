@@ -2,13 +2,12 @@
 Description=hound
 Wants=network-online.target
 After=network-online.target
-Documentation=https://github.com/etsy/hound
+Documentation=https://github.com/hound-search/hound
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/sysconfig/hound
 Environment=GOTRACEBACK=crash
-ExecStart=/usr/local/bin/houndd -addr ${HOUND_HOST}:${HOUND_PORT} -conf ${HOUND_CONFIG}
+ExecStart={{ hound_go_path }}/bin/houndd -addr {{ hound_host }}:{{ hound_port }} -conf {{ hound_config }}
 LimitNOFILE=65536
 LimitCORE=infinity
 WorkingDirectory=/var/lib/hound/

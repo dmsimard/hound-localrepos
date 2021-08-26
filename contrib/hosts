@@ -1,1 +1,1 @@
-localhost ansible_connection=local
+codesearch ansible_connection=local

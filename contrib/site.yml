@@ -15,7 +15,9 @@
 #
 
 - name: Set up Hound with localrepos
-  hosts: all
+  hosts: codesearch
+  gather_facts: true
+  become: true
   tasks:
     - name: Include the localrepos role
       include_role:

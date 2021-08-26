@@ -1,0 +1,65 @@
+---
+#   Copyright Red Hat, Inc. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may
+#   not use this file except in compliance with the License. You may obtain
+#   a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+- name: Install nginx
+  package:
+    name: nginx
+    state: present
+
+- name: Set selinux boolean to allow nginx to reverse proxy
+  seboolean:
+    name: httpd_can_network_connect
+    state: true
+    persistent: true
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Create web root directory
+  file:
+    path: "{{ nginx_www_dir }}"
+    state: directory
+    owner: root
+    group: root
+    setype: httpd_sys_content_t
+    mode: 0755
+
+- name: Create an html file to prepend as a header
+  template:
+    src: index.html.j2
+    dest: "{{ nginx_www_dir }}/index.html"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Set up the nginx configuration
+  template:
+    src: "{{ nginx_ssl | ternary('vhost-ssl.conf.j2', 'vhost.conf.j2') }}"
+    dest: "/etc/nginx/conf.d/{{ nginx_fqdn }}.conf"
+    owner: root
+    group: root
+    mode: 0644
+  register: _nginx_conf
+
+- name: Restart nginx if necessary
+  service:
+    name: nginx
+    state: restarted
+  when: _nginx_conf is changed
+
+- name: Ensure nginx is started and enabled
+  service:
+    name: nginx
+    state: started
+    enabled: true
